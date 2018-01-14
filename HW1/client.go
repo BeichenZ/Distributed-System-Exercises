@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"net"
+	"encoding/json"
 )
 
 /////////// Msgs used by both auth and fortune servers:
@@ -62,6 +63,11 @@ type FortuneMessage struct {
 
 // Main workhorse method.
 func main() {
+
+	//Please Note: As a beginner of Golang, i read lots of reference
+	//and record them in the comment section for future reference
+	//Please Kindly Ignore
+	
 	//Parse Command line Input
 	if len(os.Args) != 4 {
 		fmt.Println("Invalid Number of Command line Arguments")
@@ -73,6 +79,9 @@ func main() {
 	//CheckError(err)
 	udpAddr_Aserver,err := net.ResolveUDPAddr("udp",os.Args[3])
 	CheckError(err)
+
+	//Create Useful Data Structure
+	var nMsg NonceMessage
 	
 	fmt.Println("Local_UDP,Local_TCP,Target_UDP are",udpAddr_Local,tcpAddr_Local,udpAddr_Aserver)
 	
@@ -90,18 +99,16 @@ func main() {
 	
 	//Receive Message From Server
 	 fmt.Println("i am runnign")
-     n, addr, err := udp_Conn.ReadFromUDP(randomMsg)
+     n, _, err := udp_Conn.ReadFromUDP(randomMsg)
 	 CheckError(err)
-     fmt.Println("UDP Server : ", addr)
-     fmt.Println("Received from UDP server : ", string(randomMsg[:n]))
-	/*for {
-		fmt.Println("i am runnign")
-		rxMsg := make([]byte,100)
-		n,err := udp_Conn.Read(rxMsg)
-		CheckError(err)
-		fmt.Println("Received From A server:",string(rxMsg[:n]))
-		
-	}*/
+	 
+     //Decode JSON Object
+     //Reference:https://gobyexample.com/json
+     //Reference:invalid character '\x00' after top-level value
+     err = json.Unmarshal(randomMsg[:n],&nMsg)
+     CheckError(err)
+     fmt.Println("Received From UDP Server : Display by default",nMsg.N)
+	
 	
 	fmt.Println("This is Done")
 
