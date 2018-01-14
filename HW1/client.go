@@ -16,10 +16,10 @@ import (
 	"encoding/hex"
 
 	// TODO
-	"fmt"
-	"os"
-	"net"
 	"encoding/json"
+	"fmt"
+	"net"
+	"os"
 )
 
 /////////// Msgs used by both auth and fortune servers:
@@ -67,67 +67,93 @@ func main() {
 	//Please Note: As a beginner of Golang, i read lots of reference
 	//and record them in the comment section for future reference
 	//Please Kindly Ignore
-	
+
 	//Parse Command line Input
 	if len(os.Args) != 4 {
 		fmt.Println("Invalid Number of Command line Arguments")
 		os.Exit(1)
 	}
-	udpAddr_Local,err := net.ResolveUDPAddr("udp",os.Args[1])
+	udpAddr_Local, err := net.ResolveUDPAddr("udp", os.Args[1])
 	CheckError(err)
-	tcpAddr_Local,err := net.ResolveTCPAddr("tcp",os.Args[2])
+	tcpAddr_Local, err := net.ResolveTCPAddr("tcp", os.Args[2])
 	//CheckError(err)
-	udpAddr_Aserver,err := net.ResolveUDPAddr("udp",os.Args[3])
+	udpAddr_Aserver, err := net.ResolveUDPAddr("udp", os.Args[3])
 	CheckError(err)
 
 	//Create Useful Data Structure
 	var nMsg NonceMessage
-	
-	fmt.Println("Local_UDP,Local_TCP,Target_UDP are",udpAddr_Local,tcpAddr_Local,udpAddr_Aserver)
-	
+	var fiMsg FortuneInfoMessage
+
+	fmt.Println("Local_UDP,Local_TCP,Target_UDP are", udpAddr_Local, tcpAddr_Local, udpAddr_Aserver)
+
 	//establish UDP connection
-	udp_Conn,err := net.DialUDP("udp",udpAddr_Local,udpAddr_Aserver)
+	udp_Conn, err := net.DialUDP("udp", udpAddr_Local, udpAddr_Aserver)
 	fmt.Println("Finish Dialing up")
 	//udp_Conn,err := net.DialUDP("udp",os.Args[1],os.Args[3])
 	CheckError(err)
-	defer udp_Conn.Close()
-	
+
+
 	//Write an aribitary message to UDP Server
-	randomMsg:= make([]byte,1024)
-	_,err = udp_Conn.Write(randomMsg)
+	randomMsg := make([]byte, 1024)
+	_, err = udp_Conn.Write(randomMsg)
 	CheckError(err)
-	
+
 	//Receive Message From Server
-	 fmt.Println("i am runnign")
-     n, _, err := udp_Conn.ReadFromUDP(randomMsg)
-	 CheckError(err)
-	 
-     //Decode JSON Object
-     //Reference:https://gobyexample.com/json
-     //Reference:invalid character '\x00' after top-level value
-     err = json.Unmarshal(randomMsg[:n],&nMsg)
-     CheckError(err)
-     fmt.Println("Received From UDP Server : Display by default",nMsg.N)
-	
-	
-	fmt.Println("This is Done")
+	fmt.Println("i am runnign")
+	n, _, err := udp_Conn.ReadFromUDP(randomMsg)
+	CheckError(err)
+
+	//Decode JSON Object
+	//Reference:https://gobyexample.com/json
+	//Reference:invalid character '\x00' after top-level value
+	err = json.Unmarshal(randomMsg[:n], &nMsg)
+	CheckError(err)
+	udp_Conn.Close()
+	fmt.Println("Received From UDP Server : Display by default", randomMsg[:n])
+	fmt.Println("Received From UDP Server : Display by default", nMsg.N)
+	fmt.Println("Received From UDP Server : Display by default", nMsg.Nonce)
+
+	//Calculate the Secret
+	secret := computeNonce(nMsg.N, nMsg.Nonce) + nMsg.Nonce
+	encoded_Secret,err := json.Marshal(secret)
+	CheckError(err)
+
+	udp_Conn, err = net.DialUDP("udp", udpAddr_Local, udpAddr_Aserver)
+	CheckError(err)
+	_,err = udp_Conn.Write(encoded_Secret)
+	fmt.Println("i am waiting")
+
+	randomMsg2 := make([]byte,1024)
+	n, _, err = udp_Conn.ReadFromUDP(randomMsg2)
+	CheckError(err)
+	err = json.Unmarshal(randomMsg2[:n], &fiMsg)
+	CheckError(err)
+	fmt.Println("Received From UDP Server : Display by default", randomMsg2[:n])
+	fmt.Println("Received From UDP Server : Display by default", fiMsg.FortuneServer)
+	fmt.Println("Received From UDP Server : Display by default", fiMsg.FortuneNonce)
 
 
-	//fmt.Println("UDP Server:",addr)
-	//fmt.Println("Received From A server:",string(buffer[:n]))
+
+
+	//Encode Secret to Json and Send To UDP
 	
-		
-	// Use json.Marshal json.Unmarshal for encoding/decoding to servers
+	
 
 }
 
-func CheckError(err error){
+func CheckError(err error) {
 	if err != nil {
-		fmt.Println("Error Ocurred:",err)
+		fmt.Println("Error Ocurred:", err)
 		os.Exit(0)
 	}
 }
 
+//Cacluate the secret string
+func computeNonce(N int64, Nonce string) string {
+	return "FVVTErKnJq"
+
+
+}
 
 // Returns the MD5 hash as a hex string for the (nonce + secret) value.
 func computeNonceSecretHash(nonce string, secret string) string {
