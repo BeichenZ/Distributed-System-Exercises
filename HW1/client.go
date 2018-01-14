@@ -150,15 +150,51 @@ func CheckError(err error) {
 
 //Cacluate the secret string
 func computeNonce(N int64, Nonce string) string {
+	//Insanity Check
+	var md5CheckSum []byte
+	md5CheckSum=computeNonceSecretHash("here-be-your-nonce","FVVTErKnJq")
+	fmt.Println("Does this checksum satisfy requirment: ",Check_ifNZeros(N,md5CheckSum))
 	return "FVVTErKnJq"
-
 
 }
 
 // Returns the MD5 hash as a hex string for the (nonce + secret) value.
-func computeNonceSecretHash(nonce string, secret string) string {
+func Check_ifNZeros(N int64,checksum []byte) bool{
+	var Nb int64 = N/2
+	fmt.Println("Nb is",Nb)
+	var i int64
+	if(N%2==0){
+		for i=0;i<Nb;i++ {
+			if(checksum[15-i] != 0){
+				fmt.Println("ït's 1")
+				return false
+			}
+		}
+	} else{
+		for i=0;i<Nb-1;i++{
+			if(checksum[15-i] != 0){
+				fmt.Println("it's 2")				
+                                return false
+                        }
+		}
+		if(N == 0){
+			if(checksum[15]<<4 !=0){
+			fmt.Println("it's 3")
+			return false
+			}
+		} else if (checksum[15-Nb]<<4 != 0){
+				fmt.Println("it's 4")
+                                return false
+                        }
+		
+	}
+	return true
+	
+}
+func computeNonceSecretHash(nonce string, secret string) []byte {
 	h := md5.New()
 	h.Write([]byte(nonce + secret))
 	str := hex.EncodeToString(h.Sum(nil))
-	return str
+	fmt.Println("CheckSum is",str) 
+	return h.Sum(nil)
 }
