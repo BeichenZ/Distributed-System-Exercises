@@ -78,6 +78,8 @@ func main() {
 	
 	//establish UDP connection
 	udp_Conn,err := net.DialUDP("udp",udpAddr_Local,udpAddr_Aserver)
+	fmt.Println("Finish Dialing up")
+	//udp_Conn,err := net.DialUDP("udp",os.Args[1],os.Args[3])
 	CheckError(err)
 	defer udp_Conn.Close()
 	
