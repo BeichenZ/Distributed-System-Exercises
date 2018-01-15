@@ -45,6 +45,7 @@ type SecretMessage struct {
 // Message with details for contacting the fortune-server.
 type FortuneInfoMessage struct {
 	FortuneServer string // TCP ip:port for contacting the fserver
+
 	FortuneNonce  int64
 }
 
@@ -84,6 +85,8 @@ func main() {
 	var nMsg NonceMessage
 	var fiMsg FortuneInfoMessage
 	var powMsg SecretMessage
+	var frMsg FortuneReqMessage
+	var ftMsg FortuneMessage
 
 	fmt.Println("Local_UDP,Local_TCP,Target_UDP are", udpAddr_Local, tcpAddr_Local, udpAddr_Aserver)
 
@@ -135,7 +138,27 @@ func main() {
 	fmt.Println("Received From UDP Server : Display by default", fiMsg.FortuneNonce)
 
 
-	//Encode Secret to Json and Send To UDP
+	//Send to F-Server
+	tcpAddr_Fserver,err := net.ResolveTCPAddr("tcp",fiMsg.FortuneServer)
+	CheckError(err)
+	tcp_Conn,err := net.DialTCP("tcp",tcpAddr_Local,tcpAddr_Fserver)
+	CheckError(err)
+	defer tcp_Conn.Close()
+
+	frMsg.FortuneNonce = fiMsg.FortuneNonce
+	encoded_FortuneNonce,err := json.Marshal(frMsg)
+	CheckError(err)
+	_,err = tcp_Conn.Write(encoded_FortuneNonce)
+	CheckError(err)
+
+	n,err = tcp_Conn.Read(randomMsg)
+	CheckError(err)
+	err = json.Unmarshal(randomMsg[:n],&ftMsg)
+	CheckError(err)
+	fmt.Println("Received From Fserver Fortune String :",ftMsg.Fortune)
+	fmt.Println("Received From Fserver Rank:",ftMsg.Rank)
+	
+ 
 	
 	
 
