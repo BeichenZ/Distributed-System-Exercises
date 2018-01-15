@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"log"
 )
 
 /////////// Msgs used by both auth and fortune servers:
@@ -157,6 +158,7 @@ func main() {
 	CheckError(err)
 	fmt.Println("Received From Fserver Fortune String :",ftMsg.Fortune)
 	fmt.Println("Received From Fserver Rank:",ftMsg.Rank)
+	log.Println(ftMsg.Fortune)
 	
  
 	
