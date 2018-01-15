@@ -83,13 +83,15 @@ func main() {
 	//Create Useful Data Structure
 	var nMsg NonceMessage
 	var fiMsg FortuneInfoMessage
+	var powMsg SecretMessage
 
 	fmt.Println("Local_UDP,Local_TCP,Target_UDP are", udpAddr_Local, tcpAddr_Local, udpAddr_Aserver)
 
 	//establish UDP connection
 	udp_Conn, err := net.DialUDP("udp", udpAddr_Local, udpAddr_Aserver)
+	CheckError(err)
+	defer udp_Conn.Close()
 	fmt.Println("Finish Dialing up")
-	//udp_Conn,err := net.DialUDP("udp",os.Args[1],os.Args[3])
 	CheckError(err)
 
 
@@ -99,40 +101,38 @@ func main() {
 	CheckError(err)
 
 	//Receive Message From Server
-	fmt.Println("i am runnign")
 	n, _, err := udp_Conn.ReadFromUDP(randomMsg)
 	CheckError(err)
 
 	//Decode JSON Object
 	//Reference:https://gobyexample.com/json
-	//Reference:invalid character '\x00' after top-level value
 	err = json.Unmarshal(randomMsg[:n], &nMsg)
 	CheckError(err)
-	udp_Conn.Close()
+	//udp_Conn.Close()
 	fmt.Println("Received From UDP Server : Display by default", randomMsg[:n])
 	fmt.Println("Received From UDP Server : Display by default", nMsg.N)
 	fmt.Println("Received From UDP Server : Display by default", nMsg.Nonce)
 
 	//Calculate the Secret
-	secret := computeNonce(nMsg.N, nMsg.Nonce) + nMsg.Nonce
-	encoded_Secret,err := json.Marshal(secret)
+	secret := computeNonce(nMsg.N, nMsg.Nonce)
+	powMsg.Secret = secret
+	encoded_Secret,err := json.Marshal(powMsg)
 	CheckError(err)
 
-	udp_Conn, err = net.DialUDP("udp", udpAddr_Local, udpAddr_Aserver)
+	//udp_Conn, err = net.DialUDP("udp", udpAddr_Local, udpAddr_Aserver)
 	CheckError(err)
+	//defer udp_Conn.Close()
 	_,err = udp_Conn.Write(encoded_Secret)
 	fmt.Println("i am waiting")
 
-	randomMsg2 := make([]byte,1024)
-	n, _, err = udp_Conn.ReadFromUDP(randomMsg2)
+	//randomMsg2 := make([]byte,1024)
+	n, _, err = udp_Conn.ReadFromUDP(randomMsg)
 	CheckError(err)
-	err = json.Unmarshal(randomMsg2[:n], &fiMsg)
+	err = json.Unmarshal(randomMsg[:n], &fiMsg)
 	CheckError(err)
-	fmt.Println("Received From UDP Server : Display by default", randomMsg2[:n])
+	fmt.Println("Received From UDP Server : Display by default", randomMsg[:n])
 	fmt.Println("Received From UDP Server : Display by default", fiMsg.FortuneServer)
 	fmt.Println("Received From UDP Server : Display by default", fiMsg.FortuneNonce)
-
-
 
 
 	//Encode Secret to Json and Send To UDP
