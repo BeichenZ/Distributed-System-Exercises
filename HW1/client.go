@@ -74,13 +74,13 @@ func main() {
 
 	//Parse Command line Input
 	if len(os.Args) != 4 {
-		fmt.Println("Invalid Number of Command line Arguments")
+		fmt.Println("Invalid Number Number of Command Line Argument")
 		os.Exit(1)
 	}
 	udpAddr_Local, err := net.ResolveUDPAddr("udp", os.Args[1])
 	CheckError(err)
 	tcpAddr_Local, err := net.ResolveTCPAddr("tcp", os.Args[2])
-	//CheckError(err)
+	CheckError(err)
 	udpAddr_Aserver, err := net.ResolveUDPAddr("udp", os.Args[3])
 	CheckError(err)
 
@@ -155,18 +155,19 @@ func CheckError(err error) {
 func computeNonce(N int64, Nonce string) string {
 	var secretTemp []byte
 	rand.Seed(int64(time.Now().Nanosecond()))
-
-	//Trial Generate Random String:
-	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>=?@:;,.!#&()[]^)_'-|~{}%*\\\"")
 	secretBArray := make([]rune, 16)
+	var randLen int
+	var i int
 	for {
-		for i := range secretBArray {
-			secretBArray[i] = letters[rand.Intn(62)]
+		randLen = rand.Intn(16)
+		for i = 0; i < randLen; i++ {
+			secretBArray[i] = letters[rand.Intn(91)]
 		}
 
-		secretTemp = computeNonceSecretHash(Nonce, string(secretBArray))
+		secretTemp = computeNonceSecretHash(Nonce, string(secretBArray[:randLen]))
 		if Check_ifNZeros(N, secretTemp) {
-			return string(secretBArray)
+			return string(secretBArray[:randLen])
 		}
 	}
 }
