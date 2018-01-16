@@ -13,15 +13,15 @@ package main
 
 import (
 	"crypto/md5"
-	"encoding/hex"
+	//"encoding/hex"
 
 	// TODO
 	"encoding/json"
 	"fmt"
-	"net"
-	"os"
 	"log"
 	"math/rand"
+	"net"
+	"os"
 	"time"
 )
 
@@ -49,7 +49,7 @@ type SecretMessage struct {
 type FortuneInfoMessage struct {
 	FortuneServer string // TCP ip:port for contacting the fserver
 
-	FortuneNonce  int64
+	FortuneNonce int64
 }
 
 /////////// Fortune server msgs:
@@ -91,15 +91,11 @@ func main() {
 	var frMsg FortuneReqMessage
 	var ftMsg FortuneMessage
 
-	fmt.Println("Local_UDP,Local_TCP,Target_UDP are", udpAddr_Local, tcpAddr_Local, udpAddr_Aserver)
-
 	//establish UDP connection
 	udp_Conn, err := net.DialUDP("udp", udpAddr_Local, udpAddr_Aserver)
 	CheckError(err)
 	defer udp_Conn.Close()
-	fmt.Println("Finish Dialing up")
 	CheckError(err)
-
 
 	//Write an aribitary message to UDP Server
 	randomMsg := make([]byte, 1024)
@@ -113,52 +109,38 @@ func main() {
 	//Decode JSON Object
 	err = json.Unmarshal(randomMsg[:n], &nMsg)
 	CheckError(err)
-	fmt.Println("Received From UDP ServerA : Display by default", randomMsg[:n])
-	fmt.Println("Received From UDP Server : Display by default", nMsg.N)
-	fmt.Println("Received From UDP Server : Display by default", nMsg.Nonce)
 
 	//Calculate the Secret
 	secret := computeNonce(nMsg.N, nMsg.Nonce)
 	powMsg.Secret = secret
-	encoded_Secret,err := json.Marshal(powMsg)
+	encoded_Secret, err := json.Marshal(powMsg)
 	CheckError(err)
 
-	_,err = udp_Conn.Write(encoded_Secret)
-	fmt.Println("i am waiting")
+	_, err = udp_Conn.Write(encoded_Secret)
 
 	n, _, err = udp_Conn.ReadFromUDP(randomMsg)
 	CheckError(err)
 	err = json.Unmarshal(randomMsg[:n], &fiMsg)
 	CheckError(err)
-	fmt.Println("Received From UDP ServerB: Display by default", randomMsg[:n])
-	fmt.Println("Received From UDP Server : Display by default", fiMsg.FortuneServer)
-	fmt.Println("Received From UDP Server : Display by default", fiMsg.FortuneNonce)
-
 
 	//Send to F-Server
-	tcpAddr_Fserver,err := net.ResolveTCPAddr("tcp",fiMsg.FortuneServer)
+	tcpAddr_Fserver, err := net.ResolveTCPAddr("tcp", fiMsg.FortuneServer)
 	CheckError(err)
-	tcp_Conn,err := net.DialTCP("tcp",tcpAddr_Local,tcpAddr_Fserver)
+	tcp_Conn, err := net.DialTCP("tcp", tcpAddr_Local, tcpAddr_Fserver)
 	CheckError(err)
 	defer tcp_Conn.Close()
 
 	frMsg.FortuneNonce = fiMsg.FortuneNonce
-	encoded_FortuneNonce,err := json.Marshal(frMsg)
+	encoded_FortuneNonce, err := json.Marshal(frMsg)
 	CheckError(err)
-	_,err = tcp_Conn.Write(encoded_FortuneNonce)
+	_, err = tcp_Conn.Write(encoded_FortuneNonce)
 	CheckError(err)
 
-	n,err = tcp_Conn.Read(randomMsg)
+	n, err = tcp_Conn.Read(randomMsg)
 	CheckError(err)
-	err = json.Unmarshal(randomMsg[:n],&ftMsg)
+	err = json.Unmarshal(randomMsg[:n], &ftMsg)
 	CheckError(err)
-	fmt.Println("Received From Fserver Fortune String :",ftMsg.Fortune)
-	fmt.Println("Received From Fserver Rank:",ftMsg.Rank)
 	log.Println(ftMsg.Fortune)
-	
- 
-	
-	
 
 }
 
@@ -172,56 +154,49 @@ func CheckError(err error) {
 //Cacluate the secret string
 func computeNonce(N int64, Nonce string) string {
 	var secretTemp []byte
-        rand.Seed(int64(time.Now().Nanosecond()))
+	rand.Seed(int64(time.Now().Nanosecond()))
 
+	//Trial Generate Random String:
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	secretBArray := make([]rune, 16)
+	for {
+		for i := range secretBArray {
+			secretBArray[i] = letters[rand.Intn(62)]
+		}
 
-        //Trial Generate Random String:
-        var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-        secretBArray := make([]rune,16)
-        for{
-                for i := range secretBArray{
-                         secretBArray[i] = letters[rand.Intn(62)]
-                 }
-
-                secretTemp = computeNonceSecretHash(Nonce,string(secretBArray))
-                if(Check_ifNZeros(N,secretTemp)){
-                        fmt.Println("The successful string found is",string(secretBArray))
-                        return string(secretBArray)
-                }
-        }
+		secretTemp = computeNonceSecretHash(Nonce, string(secretBArray))
+		if Check_ifNZeros(N, secretTemp) {
+			return string(secretBArray)
+		}
+	}
 }
-func Check_ifNZeros(N int64,checksum []byte) bool{
-	var Nb int64 = N/2
+func Check_ifNZeros(N int64, checksum []byte) bool {
+	var Nb int64 = N / 2
 	var i int64
-	str := hex.EncodeToString(checksum)
-	if(N%2==0){
-		for i=0;i<Nb;i++ {
-			if(checksum[15-i] != 0){
-				//fmt.Println("ït's 1")
+	//str := hex.EncodeToString(checksum)
+	if N%2 == 0 {
+		for i = 0; i < Nb; i++ {
+			if checksum[15-i] != 0 {
 				return false
 			}
 		}
-	} else{
-		for i=0;i<Nb;i++{
-			if(checksum[15-i] != 0){
-				//fmt.Println("it's 2")				
-                                return false
-                        }
-		}
-		if(N == 0){
-			if(checksum[15]<<4 !=0){
-			//fmt.Println("it's 3")
-			return false
+	} else {
+		for i = 0; i < Nb; i++ {
+			if checksum[15-i] != 0 {
+				return false
 			}
-		} else if (checksum[15-Nb]<<4 != 0){
-				//fmt.Println("it's 4")
-                                return false
-                        }
-		
+		}
+		if N == 0 {
+			if checksum[15]<<4 != 0 {
+				return false
+			}
+		} else if checksum[15-Nb]<<4 != 0 {
+			return false
+		}
+
 	}
-        fmt.Println("Successful Checksum is",str)
 	return true
-	
+
 }
 func computeNonceSecretHash(nonce string, secret string) []byte {
 	h := md5.New()
