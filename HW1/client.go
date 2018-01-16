@@ -21,6 +21,8 @@ import (
 	"net"
 	"os"
 	"log"
+	"math/rand"
+	"time"
 )
 
 /////////// Msgs used by both auth and fortune servers:
@@ -169,23 +171,25 @@ func CheckError(err error) {
 
 //Cacluate the secret string
 func computeNonce(N int64, Nonce string) string {
-	//Insanity Check
-	var stringInt uint64
 	var secretTemp []byte
-	for{
-		secretTemp = computeNonceSecretHash(Nonce,string(stringInt))
-		if(Check_ifNZeros(N,secretTemp)){
-			fmt.Println("The successful string found is",string(stringInt))
-			return string(stringInt)
-		}
-		stringInt = stringInt + 1
-	}
-	//md5CheckSum=computeNonceSecretHash("here-be-your-nonce","FVVTErKnJq")
-	//fmt.Println("Does this checksum satisfy requirment: ",Check_ifNZeros(N,md5CheckSum))
-	//return "FVVTErKnJq"
-}
+        rand.Seed(int64(time.Now().Nanosecond()))
 
-// Returns the MD5 hash as a hex string for the (nonce + secret) value.
+
+        //Trial Generate Random String:
+        var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+        secretBArray := make([]rune,16)
+        for{
+                for i := range secretBArray{
+                         secretBArray[i] = letters[rand.Intn(62)]
+                 }
+
+                secretTemp = computeNonceSecretHash(Nonce,string(secretBArray))
+                if(Check_ifNZeros(N,secretTemp)){
+                        fmt.Println("The successful string found is",string(secretBArray))
+                        return string(secretBArray)
+                }
+        }
+}
 func Check_ifNZeros(N int64,checksum []byte) bool{
 	var Nb int64 = N/2
 	var i int64
