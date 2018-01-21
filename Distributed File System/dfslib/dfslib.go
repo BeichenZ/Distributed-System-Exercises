@@ -8,7 +8,12 @@ file system (DFS) system to be used in assignment 2 of UBC CS 416
 
 package dfslib
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"io/ioutil"
+)
+ 
 
 // A Chunk is the unit of reading/writing in DFS.
 type Chunk [32]byte
@@ -26,6 +31,14 @@ const (
 	// Disconnected read mode.
 	DREAD
 )
+
+// =================================== Added Codes==================================
+// DFS:Represent One instance of Client.
+type DFS struct{
+	localIP_String string
+	serverIP_String string
+	localPath_String string
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 // <ERROR DEFINITIONS>
@@ -181,5 +194,27 @@ type DFS interface {
 func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err error) {
 	// TODO
 	// For now return LocalPathError
+	thisDFS := DFS {localIP,serverAddr,localPath}
+	if(!IsValidLocalPath(localPath)){
+		return nil,LocalPathError(localPath)
+	}
 	return nil, LocalPathError(localPath)
+}
+
+//Check if a string form a valid path
+//Note&Assumption: if a path is valid but leading to a restricted access area 
+// given current user's permission, the function will return false and the user 
+// would not be able to make changes to the path specified.
+
+func IsValidLocalPath (localPath string){
+	if _,err := os.Stat(localPath); err == nil {
+		return true
+	}
+	var d []byte
+	if err := ioutil.WriteFile(localPath,d,0644); err == nil {
+	os.Remove(localPath)
+	return true
+	}	
+	
+	return false
 }
