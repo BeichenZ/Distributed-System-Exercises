@@ -34,12 +34,23 @@ const (
 
 // =================================== Added Codes==================================
 // DFS:Represent One instance of Client.
-type DFS struct{
+type DFSObj struct{
 	localIP_String string
 	serverIP_String string
 	localPath_String string
 }
-
+func (dfsObj *DFSObj) LocalFileExists(fname string) (exists bool,err error){
+	return nil,nil
+}
+func (dfsObj *DFSObj) GlobalFileExists(fname string) (exists bool, err error){
+	return nil,nil
+}
+func (dfsObj *DFSObj) Open(fname string,mode FileMode)(f DFSFile,err error){
+	return nil,nil
+}
+func (dfsObj *DFSObj) UMountDFS() error{
+	return nil,nil
+}
 ////////////////////////////////////////////////////////////////////////////////////////////
 // <ERROR DEFINITIONS>
 
@@ -175,6 +186,7 @@ type DFS interface {
 	UMountDFS() (err error)
 }
 
+
 // The constructor for a new DFS object instance. Takes the server's
 // IP:port address string as parameter, the localIP to use to
 // establish the connection to the server, and a localPath path on the
@@ -194,8 +206,8 @@ type DFS interface {
 func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err error) {
 	// TODO
 	// For now return LocalPathError
-	thisDFS := DFS {localIP,serverAddr,localPath}
-	if(!IsValidLocalPath(localPath)){
+	thisDFS := DFSObj {localIP,serverAddr,localPath}
+	if isvalid,err := IsValidLocalPath(localPath);!isvalid{
 		return nil,LocalPathError(localPath)
 	}
 	return nil, LocalPathError(localPath)
