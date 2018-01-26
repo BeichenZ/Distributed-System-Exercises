@@ -5,7 +5,7 @@ import (
 	//"encoding/hex"
 
 	// TODO
-	//"encoding/json"
+	"encoding/json"
 	"fmt"
 	//"log"
 	//"math/rand"
@@ -13,7 +13,9 @@ import (
 	"os"
 	//"time"
 )
-
+type OneStringMsg struct {
+	Msg string
+}
 //Main Method
 func main() {
 	if len(os.Args) != 2 {
@@ -41,8 +43,11 @@ func main() {
 func handleRequest(conn net.Conn){
 	buf := make([]byte,1024)
 	reqLen,err := conn.Read(buf)
-	fmt.Println("message from client:",buf[:reqLen])
 	Check_NonFatalError(err)
+	var receivedMsg OneStringMsg
+	err = json.Unmarshal(buf[:reqLen],&receivedMsg)
+	Check_NonFatalError(err)
+	fmt.Println("message from client:",receivedMsg.Msg)
 	conn.Write([]byte("Message Received."))
 	conn.Close()
 }
