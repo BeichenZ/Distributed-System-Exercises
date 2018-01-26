@@ -40,16 +40,16 @@ type DFSObj struct{
 	localPath_String string
 }
 func (dfsObj *DFSObj) LocalFileExists(fname string) (exists bool,err error){
-	return nil,nil
+	return false,DisconnectedError("Not Implemented")
 }
 func (dfsObj *DFSObj) GlobalFileExists(fname string) (exists bool, err error){
-	return nil,nil
+	return false,DisconnectedError("Not Implemented")
 }
 func (dfsObj *DFSObj) Open(fname string,mode FileMode)(f DFSFile,err error){
 	return nil,nil
 }
 func (dfsObj *DFSObj) UMountDFS() error{
-	return nil,nil
+	return DisconnectedError("Not Implemented")
 }
 ////////////////////////////////////////////////////////////////////////////////////////////
 // <ERROR DEFINITIONS>
@@ -206,8 +206,8 @@ type DFS interface {
 func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err error) {
 	// TODO
 	// For now return LocalPathError
-	thisDFS := DFSObj {localIP,serverAddr,localPath}
-	if isvalid,err := IsValidLocalPath(localPath);!isvalid{
+	//thisDFS := DFSObj {localIP,serverAddr,localPath}
+	if isvalid:= IsValidLocalPath(localPath);!isvalid{
 		return nil,LocalPathError(localPath)
 	}
 	return nil, LocalPathError(localPath)
@@ -218,7 +218,7 @@ func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err
 // given current user's permission, the function will return false and the user 
 // would not be able to make changes to the path specified.
 
-func IsValidLocalPath (localPath string){
+func IsValidLocalPath (localPath string) bool{
 	if _,err := os.Stat(localPath); err == nil {
 		return true
 	}

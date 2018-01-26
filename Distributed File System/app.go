@@ -11,26 +11,42 @@ package main
 
 // Expects dfslib.go to be in the ./dfslib/ dir, relative to
 // this app.go file
-import "./dfslib"
+import (
+	"./dfslib"
+	"fmt"
+	"net"
+	"os"
+) 
 
-import "fmt"
-import "os"
 
 func main() {
-	serverAddr := "127.0.0.1:8080"
+	serverAddr := "127.0.0.1:3333"
 	localIP := "127.0.0.1"
 	localPath := "/tmp/dfs-dev/"
 
 	// Connect to DFS.
 	dfs, err := dfslib.MountDFS(serverAddr, localIP, localPath)
-	if checkError(err) != nil {
+	/*if checkError(err) != nil {
 		return
 	}
+	*/
 
 	// Close the DFS on exit.
 	// Defers are really cool, check out: https://blog.golang.org/defer-panic-and-recover
-	defer dfs.UMountDFS()
+	//defer dfs.UMountDFS()
+	tcpServer_Addr,err := net.ResolveTCPAddr("tcp",serverAddr)
+	checkError(err)
+	tcpLocal_Addr,err := net.ResolveTCPAddr("tcp",localIP)
+	checkError(err)
+	tcpConn, err := net.DialTCP("tcp",tcpLocal_Addr,tcpServer_Addr)
+	checkError(err)
+	randomMsg := []byte("this is my haha")
+	_,err = tcpConn.Write(randomMsg)
+	checkError(err)
+	
 
+	return
+//======Implemented Up to here===========
 	// Check if hello.txt file exists in the global DFS.
 	exists, err := dfs.GlobalFileExists("helloworld")
 	if checkError(err) != nil {
