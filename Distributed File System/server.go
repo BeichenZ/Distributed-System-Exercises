@@ -11,6 +11,7 @@ import (
 	//"math/rand"
 	"net"
 	"os"
+	"net/rpc"
 	//"./dfslib"
 	"./dfslib/shared"
 	//"time"
@@ -31,14 +32,26 @@ func main() {
 	Check_ServerError(err)
 	defer Iconn.Close()
 	fmt.Println("Listening on" + tcpAddr_Server)
+
+	//Register a new RPC Server
+	arithServiceObj := new(shared.ArithObjT1)
+	rpcServer := rpc.NewServer()
+	registerRPC_Arith(rpcServer,arithServiceObj)
 	//main loop
+	/*
 	for{
 		conn,err := Iconn.Accept()
 		Check_ServerError(err)
 		go handleRequest(conn)
-	}
+	}*/
+	rpcServer.Accept(Iconn)
 
 }
+//Wrapper For Registering RPC Services
+func registerRPC_Arith(server *rpc.Server,arith shared.Arith){
+	server.RegisterName("Arith_Interface",arith)
+}
+
 //Separate Thread to handle the request
 func handleRequest(conn net.Conn){
 	buf := make([]byte,1024)

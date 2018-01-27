@@ -17,9 +17,50 @@ import (
 	"net"
 	"os"
 	"encoding/json"
+	"net/rpc"
+	"./dfslib/shared"
+	"log"
 ) 
 type OneStringMsg struct {
 	Msg string
+}
+//Define Local Method for RPC Calls
+type ArithRPCClient struct {
+	client *rpc.Client
+}
+func (t *ArithRPCClient) Divide(a, b int) shared.Quotient {
+
+	args := &shared.Args{a, b}
+
+	var reply shared.Quotient
+	//Synchronous Call
+	err := t.client.Call("Arith_Interface.Divide", args, &reply)
+
+	if err != nil {
+
+		log.Fatal("arith error:", err)
+
+	}
+
+	return reply
+
+}
+func (t *ArithRPCClient) Multiply(a, b int) int {
+
+	args := &shared.Args{a, b}
+
+	var reply int
+
+	err := t.client.Call("Arith_Interface.Multiply", args, &reply)
+
+	if err != nil {
+
+		log.Fatal("arith error:", err)
+
+	}
+
+	return reply
+
 }
 
 func main() {
@@ -33,6 +74,11 @@ func main() {
 	checkError(err)
 	tcpConn, err := net.DialTCP("tcp",tcpLocal_Addr,tcpServer_Addr)
 	checkError(err)
+
+	//Make RPC Calls
+	arith := &ArithRPCClient{client: rpc.NewClient(tcpConn)}
+	fmt.Println(arith.Multiply(5,6))
+	fmt.Println(arith.Divide(500,100))
 	var msgStruct OneStringMsg
 	msgStruct.Msg = "this is my haha"
 	encodedMsg,err := json.Marshal(msgStruct)
