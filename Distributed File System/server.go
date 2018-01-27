@@ -11,11 +11,11 @@ import (
 	//"math/rand"
 	"net"
 	"os"
+	//"./dfslib"
+	"./dfslib/shared"
 	//"time"
 )
-type OneStringMsg struct {
-	Msg string
-}
+
 //Main Method
 func main() {
 	if len(os.Args) != 2 {
@@ -25,7 +25,7 @@ func main() {
 
 	tcpAddr_Server := os.Args[1]
 	//Server's Overall Structure is referenced from https://coderwall.com/p/wohavg/creating-a-simple-tcp-server-in-go
-
+	//RPC Reference:https://parthdesai.me/articles/2016/05/20/go-rpc-server/
 	//Listen for incoming connections
 	Iconn,err := net.Listen("tcp",tcpAddr_Server)
 	Check_ServerError(err)
@@ -44,7 +44,7 @@ func handleRequest(conn net.Conn){
 	buf := make([]byte,1024)
 	reqLen,err := conn.Read(buf)
 	Check_NonFatalError(err)
-	var receivedMsg OneStringMsg
+	var receivedMsg shared.OneStringMsg
 	err = json.Unmarshal(buf[:reqLen],&receivedMsg)
 	Check_NonFatalError(err)
 	fmt.Println("message from client:",receivedMsg.Msg)
