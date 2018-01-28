@@ -215,7 +215,6 @@ func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err
 	//thisDFS := DFSObj {localIP,serverAddr,localPath}
 	//Check Local Path and Write Permission
 	if isvalid:= IsValidLocalPath(localPath);!isvalid{
-		
 		return nil,LocalPathError(localPath)
 	}
 	//Check if it's Returning client
@@ -226,11 +225,13 @@ func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err
 	if !metaFileExist {
 		_,err = os.Create(dfsMetaFile_Addr)
 		//test
+		/*
 		myMetaData := DFSMetaData{ID:102}
 		Write_DFSMetaData(dfsMetaFile_Addr,myMetaData)
 		_,myReadMetaData,err := Read_DFSMetaData(dfsMetaFile_Addr)
 		CheckFatalError(err)
 		fmt.Println("Read ID is:",myReadMetaData.ID)
+		*/
 	}else{
 		//Load files from 
 		fmt.Println("metaData File Exists")
