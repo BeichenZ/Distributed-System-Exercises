@@ -12,6 +12,9 @@ import (
 	"fmt"
 	"os"
 	"io/ioutil"
+	"path/filepath"
+	"errors"
+	"encoding/json"
 )
  
 
@@ -33,6 +36,10 @@ const (
 )
 
 // =================================== Added Codes==================================
+//Meta Data that uniquely define one instance of DFS
+type DFSMetaData struct{
+	ID int
+}
 // DFS:Represent One instance of Client.
 type DFSObj struct{
 	localIP_String string
@@ -205,12 +212,31 @@ type DFS interface {
 // - Networking errors related to localIP or serverAddr
 func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err error) {
 	// TODO
-	// For now return LocalPathError
 	//thisDFS := DFSObj {localIP,serverAddr,localPath}
+	//Check Local Path and Write Permission
 	if isvalid:= IsValidLocalPath(localPath);!isvalid{
+		
 		return nil,LocalPathError(localPath)
 	}
-	return nil, LocalPathError(localPath)
+	//Check if it's Returning client
+	dfsMetaFile_Addr := filepath.Join(localPath,"dfsMeta.json")
+	metaFileExist,dfsMetaFile,err := Read_DFSMetaData(dfsMetaFile_Addr)
+	CheckNonFatalError(err)
+	dfsMetaFile = dfsMetaFile //placeholder
+	if !metaFileExist {
+		_,err = os.Create(dfsMetaFile_Addr)
+		//test
+		myMetaData := DFSMetaData{ID:102}
+		Write_DFSMetaData(dfsMetaFile_Addr,myMetaData)
+		_,myReadMetaData,err := Read_DFSMetaData(dfsMetaFile_Addr)
+		CheckFatalError(err)
+		fmt.Println("Read ID is:",myReadMetaData.ID)
+	}else{
+		//Load files from 
+		fmt.Println("metaData File Exists")
+	}
+	
+	return nil, nil
 }
 
 //Check if a string form a valid path
@@ -221,12 +247,40 @@ func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err
 func IsValidLocalPath (localPath string) bool{
 	if _,err := os.Stat(localPath); err == nil {
 		return true
+	}else {
+		return false
 	}
-	var d []byte
-	if err := ioutil.WriteFile(localPath,d,0644); err == nil {
-	os.Remove(localPath)
-	return true
-	}	
-	
-	return false
 }
+//Return False if No MetaDatafile is presented
+//else, read and return the meta data
+func Read_DFSMetaData (dfsFileAddr string) (fileExists bool,dfsMetaData DFSMetaData,err error) {
+	var metaData DFSMetaData
+	if _,err := os.Stat(dfsFileAddr);err == nil {
+		raw,err := ioutil.ReadFile(dfsFileAddr)
+		CheckFatalError(err)
+		json.Unmarshal(raw,&metaData)
+		return true,metaData,nil
+	}else{
+		return false,metaData,errors.New("No DFSMetaFile Present at: "+dfsFileAddr)
+	}
+}
+//Write Meta Data to MetaDataFile
+func Write_DFSMetaData(dfsFileAddr string, dfsMetaData DFSMetaData){
+	encodedObj,err := json.Marshal(dfsMetaData)
+	CheckFatalError(err)
+	err = ioutil.WriteFile(dfsFileAddr,encodedObj,0644)
+	CheckFatalError(err)	
+}
+
+func CheckNonFatalError (err error) {
+	if err != nil {
+		fmt.Println("NonFatal Error/Warning(Expectede) Ocurred:", err)
+	}
+}
+func CheckFatalError (err error){
+	if err != nil {
+		fmt.Println("Fatal Error Occured:",err)
+		os.Exit(1)
+	}
+}
+

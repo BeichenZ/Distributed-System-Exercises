@@ -66,14 +66,18 @@ func (t *ArithRPCClient) Multiply(a, b int) int {
 func main() {
 	serverAddr := "127.0.0.1:3333"
 	localIP := "127.0.0.1"
-	localPath := "/tmp/dfs-dev/"
+	localPath := "/home/j/j2y8/cs416/testfiles"
 
 	tcpServer_Addr,err := net.ResolveTCPAddr("tcp",serverAddr)
 	checkError(err)
 	tcpLocal_Addr,err := net.ResolveTCPAddr("tcp",localIP)
 	checkError(err)
 	tcpConn, err := net.DialTCP("tcp",tcpLocal_Addr,tcpServer_Addr)
+	fmt.Println("Reach after DialTCP")
 	checkError(err)
+	//Note, Close() will last longer than the main thread. Therefore, a new application instance that use the same port may face "addr already in use error" if it uses the same port.This is up for user to control
+	defer tcpConn.Close()
+	fmt.Println("Reach after DialTCP2")
 
 	//Make RPC Calls
 	arith := &ArithRPCClient{client: rpc.NewClient(tcpConn)}
@@ -88,15 +92,14 @@ func main() {
 	
 // Connect to DFS.
 	dfs, err := dfslib.MountDFS(serverAddr, localIP, localPath)
-	/*if checkError(err) != nil {
+	if checkError(err) != nil {
 		return
 	}
-	*/
 
 	// Close the DFS on exit.
 	// Defers are really cool, check out: https://blog.golang.org/defer-panic-and-recover
 	//defer dfs.UMountDFS()
-
+	fmt.Println("Last Line of Code")
 	return
 //======Implemented Up to here===========
 	// Check if hello.txt file exists in the global DFS.
