@@ -56,9 +56,10 @@ func (t *lib_RPCClient) RegisterNewClient_Remote(localIP string,localPath string
 }
 // DFS:Represent One instance of Client.
 type DFSObj struct{
-	localIP_String string
-	serverIP_String string
-	localPath_String string
+	localIP string
+	serverAddr string
+	localPath string
+	id int
 }
 func (dfsObj *DFSObj) LocalFileExists(fname string) (exists bool,err error){
 	return false,DisconnectedError("Not Implemented")
@@ -225,8 +226,9 @@ type DFS interface {
 // - LocalPathError
 // - Networking errors related to localIP or serverAddr
 func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err error) {
-	// TODO
-	//thisDFS := DFSObj {localIP,serverAddr,localPath}
+	// Initialize
+	thisDFS := DFSObj {localIP:localIP,serverAddr:serverAddr,localPath:localPath}
+	
 	//Check Local Path and Write Permission
 	if isvalid:= IsValidLocalPath(localPath);!isvalid{
 		return nil,LocalPathError(localPath)
@@ -251,7 +253,8 @@ func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err
 		//Have MetaData File
 		//Ask Server if ID is correct-> yes return directly-> no asking for a new
 		//test
-		log.Println("Existing metaData at ",localPath," with ID : ", dfsMetaFile.ID)
+		log.Println("Existing DFS metaData at ",localPath," with ID : ", dfsMetaFile.ID)
+		thisDFS.id = dfsMetaFile.ID
 		
 	}else{
 		//No MetaData File Exists
@@ -261,9 +264,10 @@ func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err
 		CheckNonFatalError(err)
 		Write_DFSMetaData(dfsMetaFile_Addr,newMetaData)
 		log.Println("Newly fetched DFS MetaData's ID",newMetaData.ID)
+		thisDFS.id = newMetaData.ID
 	}
 	
-	return nil, nil
+	return &thisDFS, nil
 }
 
 //Check if a string form a valid path

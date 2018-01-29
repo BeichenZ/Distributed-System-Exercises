@@ -35,8 +35,9 @@ func (t *DFSServiceObj) RegisterNewClient(args *shared.RNCArgs,reply *shared.RNC
 	clientList[availableIndex].localIP = args.LocalIP
 	clientList[availableIndex].localPath = args.LocalPath
 	clientList[availableIndex].occupied = true
-	clientList[availableIndex].ID = availableIndex+101
-	(*reply).ID = availableIndex+101
+	//Note use the (index+1) as the unique ID for each client
+	clientList[availableIndex].ID = availableIndex+1
+	(*reply).ID = availableIndex+1
 	return nil
 }
 
