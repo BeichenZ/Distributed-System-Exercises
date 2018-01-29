@@ -1,4 +1,4 @@
-/*
+ /*
 
 A trivial application to illustrate how the dfslib library can be used
 from an application in assignment 2 for UBC CS 416 2017W2.
@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"encoding/json"
+	//"encoding/json"
 	"net/rpc"
 	"./dfslib/shared"
 	"log"
@@ -64,7 +64,7 @@ func (t *ArithRPCClient) Multiply(a, b int) int {
 }
 
 func main() {
-	serverAddr := "127.0.0.1:3333"
+	serverAddr := "127.0.0.1:3334"
 	localIP := "127.0.0.1"
 	localPath := "/home/j/j2y8/cs416/testfiles"
 
@@ -80,6 +80,7 @@ func main() {
 	fmt.Println("Reach after DialTCP2")
 
 	//Make RPC Calls
+	/*
 	arith := &ArithRPCClient{client: rpc.NewClient(tcpConn)}
 	fmt.Println(arith.Multiply(5,6))
 	fmt.Println(arith.Divide(500,100))
@@ -89,6 +90,7 @@ func main() {
 	checkError(err)
 	_,err = tcpConn.Write(encodedMsg)
 	checkError(err)
+	*/
 	
 // Connect to DFS.
 	dfs, err := dfslib.MountDFS(serverAddr, localIP, localPath)

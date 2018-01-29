@@ -14,11 +14,45 @@ import (
 	"net/rpc"
 	//"./dfslib"
 	"./dfslib/shared"
+	"errors"
 	//"time"
 )
+//Implement shared.DFSService Interface
+type DFSServiceObj int
+//Register a new client and return a
+func (t *DFSServiceObj) RegisterNewClient(args *shared.RNCArgs,reply *shared.RNCReply) error{
+	//Assumption by Assignment, Number of Clients is capped at 16. No client can be deleted
+	availableIndex := -1
+	for index,element := range clientList {
+		if element.occupied == false {
+			availableIndex = index
+			break
+		} 
+	}
+	if availableIndex == -1 {
+		return errors.New("Application:Client Count is more than 16.")
+	}
+	clientList[availableIndex].localIP = args.LocalIP
+	clientList[availableIndex].localPath = args.LocalPath
+	clientList[availableIndex].occupied = true
+	clientList[availableIndex].ID = availableIndex+101
+	(*reply).ID = availableIndex+101
+	return nil
+}
 
+//Data Structure Type
+type SingleClientInfo struct {
+	occupied bool
+	localIP string
+	localPath string
+	ID int
+}
+//Global Data Storage Shared by Multiple RPC calls and Main
+var clientList [16]SingleClientInfo
 //Main Method
 func main() {
+	//Define Used Data Structure
+	
 	if len(os.Args) != 2 {
 		fmt.Println("Invalid Number of Command Line Argument")
 		os.Exit(1)
@@ -32,24 +66,22 @@ func main() {
 	Check_ServerError(err)
 	defer Iconn.Close()
 	fmt.Println("Listening on" + tcpAddr_Server)
-
-	//Register a new RPC Server
-	arithServiceObj := new(shared.ArithObjT1)
-	rpcServer := rpc.NewServer()
-	registerRPC_Arith(rpcServer,arithServiceObj)
-	//main loop
-	/*
-	for{
-		conn,err := Iconn.Accept()
-		Check_ServerError(err)
-		go handleRequest(conn)
-	}*/
-	rpcServer.Accept(Iconn)
+	
+	//Register DFSService RPC Server
+	DFSService_Instance := new(DFSServiceObj)
+	DFSService_rpcServer := rpc.NewServer()
+	registerRPC_DFSService(DFSService_rpcServer,DFSService_Instance)
+	DFSService_rpcServer.Accept(Iconn)
+	
+ 
 
 }
-//Wrapper For Registering RPC Services
+//Wrappers For Registering RPC Services
 func registerRPC_Arith(server *rpc.Server,arith shared.Arith){
 	server.RegisterName("Arith_Interface",arith)
+}
+func registerRPC_DFSService(server *rpc.Server,dfsService shared.DFSService){
+	server.RegisterName("DFSService",dfsService)
 }
 
 //Separate Thread to handle the request

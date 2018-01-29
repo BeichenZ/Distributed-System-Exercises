@@ -18,7 +18,17 @@ type Arith interface {
 	Multiply(args *Args,reply *int) error
 	Divide(args *Args,quo *Quotient) error
 }
-
+//DFSService Interface and Relevant Structs
+type RNCArgs struct {
+	LocalIP string
+	LocalPath string
+}
+type RNCReply struct {
+	ID int
+}
+type DFSService interface {
+	RegisterNewClient(args *RNCArgs,reply *RNCReply) error
+}
 //One implementation of Arith Interface
 type ArithObjT1 int
 func (t *ArithObjT1) Multiply(args *Args,reply *int) error {
