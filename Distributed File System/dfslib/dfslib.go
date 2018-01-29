@@ -19,6 +19,7 @@ import (
 	"net/rpc"
 	"log"
 	"net"
+	"unicode"
 )
  
 
@@ -62,9 +63,30 @@ type DFSObj struct{
 	id int
 	connected bool
 	tcpConn *net.TCPConn
+	rpcClient *lib_RPCClient
 }
 func (dfsObj *DFSObj) LocalFileExists(fname string) (exists bool,err error){
-	return false,DisconnectedError("Not Implemented")
+	destFilePath := filepath.Join(dfsObj.localPath,fname)
+	if IsAGoodFileName(fname){
+		if _,err = os.Stat(destFilePath);err == nil {
+			return true,nil		
+		}else {
+			return false,nil		
+		}
+	} else {
+		return false,BadFilenameError(fname)
+	}
+}
+func IsAGoodFileName(fname string) bool {
+	if len(fname)>16 || len(fname)<1 {
+		return false
+	}
+	for _,r := range fname {
+		if (!unicode.IsLower(r)) && (!unicode.IsDigit(r)){
+			return false		
+		}
+	}
+	return true
 }
 func (dfsObj *DFSObj) GlobalFileExists(fname string) (exists bool, err error){
 	return false,DisconnectedError("Not Implemented")
@@ -239,16 +261,15 @@ func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err
 	dfsMetaFile_Addr := filepath.Join(localPath,"dfsMeta.json")
 	metaFileExist,dfsMetaFile,err := Read_DFSMetaData(dfsMetaFile_Addr)
 	CheckNonFatalError(err)
-	dfsMetaFile = dfsMetaFile //placeholder
 
 	//Connect to Server
 	tcpServer_Addr,err := net.ResolveTCPAddr("tcp",serverAddr)
-	CheckNonFatalError(err)
-	tcpLocal_Addr,err := net.ResolveTCPAddr("tcp",localIP)
 	if err !=nil {
 		CheckNonFatalError(err)
 		return nil,err
 	}
+	tcpLocal_Addr,err := net.ResolveTCPAddr("tcp",localIP)
+	CheckNonFatalError(err)
 	tcpConn, err := net.DialTCP("tcp",tcpLocal_Addr,tcpServer_Addr)
 	CheckNonFatalError(err)
 	//in case it disconnects
@@ -264,26 +285,19 @@ func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err
 	//Connection is successful
 	thisDFS.tcpConn = tcpConn
 	thisDFS.connected = true
-	//Register Client if Needed
-	if metaFileExist {
-		_,err = os.Create(dfsMetaFile_Addr)
-		//Have MetaData File
-		//Ask Server if ID is correct-> yes return directly-> no asking for a new
-		//test
-		log.Println("Existing DFS metaData at ",localPath," with ID : ", dfsMetaFile.ID)
-		thisDFS.id = dfsMetaFile.ID
-		
-	}else{
-		//No MetaData File Exists
-		//Register client->obtain ID->Store->Finish Mounting
-		rpcClient := &lib_RPCClient{client: rpc.NewClient(tcpConn)}
+	//Build RPC Connection
+	rpcClient := &lib_RPCClient{client:rpc.NewClient(tcpConn)}
+	thisDFS.rpcClient = rpcClient	
+	if !metaFileExist {
 		newMetaData,err := rpcClient.RegisterNewClient_Remote(localIP,localPath)
 		CheckNonFatalError(err)
 		Write_DFSMetaData(dfsMetaFile_Addr,newMetaData)
-		log.Println("Newly fetched DFS MetaData's ID",newMetaData.ID)
-		thisDFS.id = newMetaData.ID
+		log.Println("New Client MetaData File Created with ID",newMetaData.ID)
+		thisDFS.id = newMetaData.ID			
+	}else {
+		thisDFS.id = dfsMetaFile.ID
+		log.Println("Detect Existing DFS MetaData at",localPath,"with ID:",dfsMetaFile.ID)
 	}
-	
 	return &thisDFS, nil
 }
 

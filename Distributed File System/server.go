@@ -15,6 +15,7 @@ import (
 	//"./dfslib"
 	"./dfslib/shared"
 	"errors"
+	"strings"
 	//"time"
 )
 //Implement shared.DFSService Interface
@@ -26,8 +27,15 @@ func (t *DFSServiceObj) RegisterNewClient(args *shared.RNCArgs,reply *shared.RNC
 	for index,element := range clientList {
 		if element.occupied == false {
 			availableIndex = index
-			break
+			break //since no user can be deleted.The first empty one cannot be repetitive
+		}else {
+			if strings.Compare(element.localIP,args.LocalIP)==0 && strings.Compare(element.localPath,args.LocalPath)==0 {
+				availableIndex = index
+				break //if this user is previous registered			
+			} 
 		} 
+		
+		
 	}
 	if availableIndex == -1 {
 		return errors.New("Application:Client Count is more than 16.")
