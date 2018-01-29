@@ -14,7 +14,7 @@ package main
 import (
 	"./dfslib"
 	"fmt"
-	"net"
+	//"net"
 	"os"
 	//"encoding/json"
 	"net/rpc"
@@ -68,7 +68,8 @@ func main() {
 	localIP := "127.0.0.1"
 	localPath := "/home/j/j2y8/cs416/testfiles"
 
-	tcpServer_Addr,err := net.ResolveTCPAddr("tcp",serverAddr)
+	//Testing code:
+	/*tcpServer_Addr,err := net.ResolveTCPAddr("tcp",serverAddr)
 	checkError(err)
 	tcpLocal_Addr,err := net.ResolveTCPAddr("tcp",localIP)
 	checkError(err)
@@ -77,7 +78,7 @@ func main() {
 	checkError(err)
 	//Note, Close() will last longer than the main thread. Therefore, a new application instance that use the same port may face "addr already in use error" if it uses the same port.This is up for user to control
 	defer tcpConn.Close()
-	fmt.Println("Reach after DialTCP2")
+	fmt.Println("Reach after DialTCP2")*/
 
 	//Make RPC Calls
 	/*

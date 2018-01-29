@@ -60,6 +60,8 @@ type DFSObj struct{
 	serverAddr string
 	localPath string
 	id int
+	connected bool
+	tcpConn *net.TCPConn
 }
 func (dfsObj *DFSObj) LocalFileExists(fname string) (exists bool,err error){
 	return false,DisconnectedError("Not Implemented")
@@ -243,10 +245,25 @@ func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err
 	tcpServer_Addr,err := net.ResolveTCPAddr("tcp",serverAddr)
 	CheckNonFatalError(err)
 	tcpLocal_Addr,err := net.ResolveTCPAddr("tcp",localIP)
-	CheckNonFatalError(err)
+	if err !=nil {
+		CheckNonFatalError(err)
+		return nil,err
+	}
 	tcpConn, err := net.DialTCP("tcp",tcpLocal_Addr,tcpServer_Addr)
 	CheckNonFatalError(err)
-
+	//in case it disconnects
+	if err != nil {
+		thisDFS.connected = false
+		thisDFS.id = -1 //invalid ID
+		thisDFS.tcpConn = nil
+		//if it starts from nothing and disconnected, no dfsMeta.json file should be created
+		//Based on pizza 241,no error related to network should return
+		return &thisDFS,nil
+		
+	}
+	//Connection is successful
+	thisDFS.tcpConn = tcpConn
+	thisDFS.connected = true
 	//Register Client if Needed
 	if metaFileExist {
 		_,err = os.Create(dfsMetaFile_Addr)
