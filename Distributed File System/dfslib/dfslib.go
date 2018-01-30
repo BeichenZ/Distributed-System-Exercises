@@ -42,10 +42,28 @@ const (
 )
 
 // =================================== Added Codes==================================
+//Local Data Type
 type DFSMetaData struct{
 	ID int
 }
-//RPC:Corresponding Calls For app->server calls
+//Implement DFSFile Interface
+type DFSFileObj struct {
+	ChunkCount int
+	ChunkVersionArray [256]int
+	FName string //Does not include post fix
+	ChunkArray [32]Chunk
+	FileHandler *os.File
+}
+func(dfsFileObj *DFSFileObj) Read(chunkNum uint8, chunk *Chunk) (err error){
+	return DisconnectedError("Not Implemented")
+}
+func(dfsFileObj *DFSFileObj) Write(chunkNum uint8, chunk *Chunk) (err error){
+	return DisconnectedError("Not Implemented")
+}
+func(dfsFileObj *DFSFileObj) Close() (err error) {
+	return DisconnectedError("Not Implemented")
+}
+//RPC:Calls
 
 type lib_RPCClient struct{
 	client *rpc.Client
@@ -67,7 +85,21 @@ func (t *lib_RPCClient)GlobalFileExists_Remote(fname string) (exists bool, err e
 		return false,DisconnectedError(t.ServerAddr) //The connection was timed out
 	}
 	return replyData.Exists,nil
-}	
+}
+func (t *lib_RPCClient)UpdateFileInfo_Remote(fname string, clientID int ,isNewFile bool) (isSucceed bool,err error) {
+	args := &shared.GenericArgs{StringOne:fname,BoolOne:isNewFile,IntOne:clientID}
+	var replyData shared.GenericReply
+	c := make(chan error, 1)
+	go func() { c <- t.client.Call("DFSService.UpdateFileInfo", args, &replyData) } ()
+	select {
+  		case err := <-c:
+    			if err != nil { return false,err}
+  		case <-time.After(2*time.Second):
+			log.Println("UpdateFileInfo Timed out on File:",fname)
+    			return false,DisconnectedError("TimeOut UpdateFileInfo RPC call")
+	}
+	return replyData.BoolOne,nil
+}
 // DFS:Represent One instance of Client.
 type DFSObj struct{
 	localIP string
@@ -79,7 +111,8 @@ type DFSObj struct{
 	rpcClient *lib_RPCClient
 }
 func (dfsObj *DFSObj) LocalFileExists(fname string) (exists bool,err error){
-	destFilePath := filepath.Join(dfsObj.localPath,fname)
+	//Note:fname DOES NOT contain postfix
+	destFilePath := filepath.Join(dfsObj.localPath,fname+".dfs")
 	if IsAGoodFileName(fname){
 		if _,err = os.Stat(destFilePath);err == nil {
 			return true,nil		
@@ -109,10 +142,50 @@ func (dfsObj *DFSObj) GlobalFileExists(fname string) (exists bool, err error){
 	}
 }
 func (dfsObj *DFSObj) Open(fname string,mode FileMode)(f DFSFile,err error){
-	return nil,nil
+	//Check File Name Error
+	if !IsAGoodFileName(fname){return nil,BadFilenameError(fname)}
+	localExists,err := dfsObj.LocalFileExists(fname)
+	if err != nil {return nil,err}
+	globalExists,err := dfsObj.GlobalFileExists(fname)
+	if err !=nil {return nil,err}
+	//Handling Different Mode
+	destAddr := filepath.Join(dfsObj.localPath,fname+".dfs")
+	var localFile DFSFileObj 
+	switch mode {
+		case READ:
+			//When New File Needs to be Created
+			if !localExists && !globalExists {
+				localFile = dfsObj.CreateNewEmptyFile(fname,destAddr)
+				_,err := dfsObj.rpcClient.UpdateFileInfo_Remote(fname,dfsObj.id,true)
+				if err != nil{return nil,DisconnectedError(dfsObj.serverAddr)}
+				fileHandlerTemp,err := os.Open(destAddr)
+				localFile.FileHandler = fileHandlerTemp
+				if err != nil {return nil,err}
+				localFile.FName = fname
+				return &localFile,nil
+			}
+		case WRITE:
+		case DREAD:
+		default:
+			return nil,BadFileModeError(mode)
+	}
+	return nil,nil //Placeholder
 }
 func (dfsObj *DFSObj) UMountDFS() error{
 	return DisconnectedError("Not Implemented")
+}
+//Other Supporting function of DFSObj that is not in the interface
+func (dfsObj *DFSObj)CreateNewEmptyFile(fname string,destAddr string) DFSFileObj{
+	var localFile DFSFileObj
+	encodedObj,err := json.Marshal(localFile)
+	CheckFatalError(err)
+	CheckFatalError(ioutil.WriteFile(destAddr,encodedObj,0644))
+	log.Println("Create New Local File Named : ",fname)
+	f,err := os.Open(destAddr)
+	CheckFatalError(err)
+	CheckFatalError(f.Sync())
+	CheckFatalError(f.Close())
+	return localFile		
 }
 ////////////////////////////////////////////////////////////////////////////////////////////
 // <ERROR DEFINITIONS>

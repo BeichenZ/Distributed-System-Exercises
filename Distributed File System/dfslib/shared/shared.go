@@ -9,7 +9,14 @@ type OneStringMsg struct{
 type ExistsMsg struct {
 	Exists bool
 }
-
+type GenericArgs struct {
+	StringOne string
+	BoolOne bool
+	IntOne int
+}
+type GenericReply struct {
+	BoolOne bool
+}
 type Args struct {
 	A,B int
 }

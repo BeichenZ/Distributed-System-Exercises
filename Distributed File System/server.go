@@ -7,7 +7,7 @@ import (
 	// TODO
 	"encoding/json"
 	"fmt"
-	//"log"
+	"log"
 	//"math/rand"
 	"net"
 	"os"
@@ -45,7 +45,7 @@ func (t *DFSServiceObj) RegisterNewClient(args *shared.RNCArgs,reply *shared.RNC
 	clientList[availableIndex].localPath = args.LocalPath
 	clientList[availableIndex].occupied = true
 	clientList[availableIndex].ID = availableIndex+1
-	clientList[availableIndex].fileMap = make(map[string]SingleDFSFileInfo)
+	clientList[availableIndex].fileMap = make(map[string]SingleDFSFileInfo_ClientList)
 	//Pass Back Remote Client Info
 	(*reply).ID = availableIndex+1
 	return nil
@@ -60,9 +60,32 @@ func (t *DFSServiceObj)GlobalFileExists(args *shared.OneStringMsg, reply *shared
 			return nil
 		}
 	}
-	//if cannot find
 	(*reply).Exists = false
 	return nil
+}
+//Functionality:Register New File. Update status of a file a specific client holds during Open & Write
+func (t *DFSServiceObj)UpdateFileInfo(args *shared.GenericArgs, reply *shared.GenericReply) error{
+	isNewFile := args.BoolOne
+	fname := args.StringOne
+	clientIndex := args.IntOne - 1
+	//For Newly Created File, add it to the client directly
+	//Note:ClientID = 1 + Its_Index_in_clientList[]
+	if isNewFile {
+		//Fill info for clientList
+		client := clientList[clientIndex]
+		log.Println("I am here 1")
+		client.fileMap[fname] = SingleDFSFileInfo_ClientList{} // by Default, version=0 is trivial version	
+		//Add new entry to globalFileMap
+		log.Println("I am here 2")
+		tempInfo := SingleDFSFileInfo_FileList{fname:fname}
+		globalFileMap[fname] = tempInfo
+		log.Println("I am here 3")
+		log.Println("New File Entry Created with Name :",globalFileMap[fname].fname)
+		(*reply).BoolOne = true
+		return nil
+	} else {
+		return nil
+	}
 }
 
 //Data Structure Type
@@ -71,14 +94,24 @@ type SingleClientInfo struct {
 	localIP string
 	localPath string
 	ID int
-	fileMap map[string]SingleDFSFileInfo
+	fileMap map[string]SingleDFSFileInfo_ClientList
 }
-type SingleDFSFileInfo struct{
+//Single File Info for Client List to use
+type SingleDFSFileInfo_ClientList struct{
 	chunkVersionArray [256]int //version number 0 is the default version
-	
+}
+//For a single Chunk.key:version number,value:array of whether client at index contains such version 
+type ChunkVersionToHolderMap map[int][16]bool
+//Single File Info for File List to Use
+type SingleDFSFileInfo_FileList struct {
+	chunkCount int
+	chunkVersion map[int]ChunkVersionToHolderMap//Key:Chunk No, Value:Version to Holder's List Map 
+	topVersion [256]int //Top version number for 256 possible chunk
+	fname string
 }
 //Global Data Storage Shared by Multiple RPC calls and Main
 var clientList [16]SingleClientInfo
+var globalFileMap map[string]SingleDFSFileInfo_FileList
 //Main Method
 func main() {
 	//Define Used Data Structure

@@ -99,13 +99,7 @@ func main() {
 		return
 	}
 
-	// Close the DFS on exit.
-	// Defers are really cool, check out: https://blog.golang.org/defer-panic-and-recover
-	//defer dfs.UMountDFS()
-	fmt.Println("Last Line of Code")
-	return
-//======Implemented Up to here===========
-	// Check if hello.txt file exists in the global DFS.
+        // Check if hello.txt file exists in the global DFS.
 	exists, err := dfs.GlobalFileExists("helloworld")
 	if checkError(err) != nil {
 		return
@@ -115,12 +109,21 @@ func main() {
 		fmt.Println("File already exists, mission accomplished")
 		return
 	}
-
-	// Open the file (and create it if it does not exist) for writing.
-	f, err := dfs.Open("helloworld", dfslib.WRITE)
+	f, err := dfs.Open("helloworld", dfslib.READ)
 	if checkError(err) != nil {
 		return
 	}
+	// Open the file (and create it if it does not exist) for writing.
+	f, err = dfs.Open("helloworld", dfslib.WRITE)
+	if checkError(err) != nil {
+		return
+	}
+	log.Println("Iam here 1")
+	//defer dfs.UMountDFS()
+	fmt.Println("Last Line of Code")
+	return
+//======Implemented Up to here===========
+	
 
 	// Close the file on exit.
 	defer f.Close()
