@@ -73,13 +73,10 @@ func (t *DFSServiceObj)UpdateFileInfo(args *shared.GenericArgs, reply *shared.Ge
 	if isNewFile {
 		//Fill info for clientList
 		client := clientList[clientIndex]
-		log.Println("I am here 1")
 		client.fileMap[fname] = SingleDFSFileInfo_ClientList{} // by Default, version=0 is trivial version	
 		//Add new entry to globalFileMap
-		log.Println("I am here 2")
-		tempInfo := SingleDFSFileInfo_FileList{fname:fname}
-		globalFileMap[fname] = tempInfo
-		log.Println("I am here 3")
+		var tempArray [256]int
+		globalFileMap[fname] = SingleDFSFileInfo_FileList{fname:fname,chunkCount:0,chunkVersionMap:make(map[int]ChunkVersionToHolderMap),topVersion:tempArray}
 		log.Println("New File Entry Created with Name :",globalFileMap[fname].fname)
 		(*reply).BoolOne = true
 		return nil
@@ -105,7 +102,7 @@ type ChunkVersionToHolderMap map[int][16]bool
 //Single File Info for File List to Use
 type SingleDFSFileInfo_FileList struct {
 	chunkCount int
-	chunkVersion map[int]ChunkVersionToHolderMap//Key:Chunk No, Value:Version to Holder's List Map 
+	chunkVersionMap map[int]ChunkVersionToHolderMap//Key:Chunk No, Value:Version to Holder's List Map 
 	topVersion [256]int //Top version number for 256 possible chunk
 	fname string
 }
@@ -120,9 +117,10 @@ func main() {
 		fmt.Println("Invalid Number of Command Line Argument")
 		os.Exit(1)
 	}
-
 	tcpAddr_Server := os.Args[1]
-	//Server's Overall Structure is referenced from https://coderwall.com/p/wohavg/creating-a-simple-tcp-server-in-go
+
+	//Initialize Data Structures:
+	globalFileMap = make(map[string]SingleDFSFileInfo_FileList)
 	//RPC Reference:https://parthdesai.me/articles/2016/05/20/go-rpc-server/
 	//Listen for incoming connections
 	Iconn,err := net.Listen("tcp",tcpAddr_Server)
