@@ -20,6 +20,7 @@ import (
 	"log"
 	"net"
 	"unicode"
+	"time"
 )
  
 
@@ -48,11 +49,13 @@ type DFSMetaData struct{
 
 type lib_RPCClient struct{
 	client *rpc.Client
+	ServerAddr string
 }
 func (t *lib_RPCClient) RegisterNewClient_Remote(localIP string,localPath string) (newClientMetaData DFSMetaData,err error) {
 	args := &shared.RNCArgs{LocalIP:localIP,LocalPath:localPath}
 	var replyMetaData DFSMetaData
 	err = t.client.Call("DFSService.RegisterNewClient",args,&replyMetaData)
+	
 	return replyMetaData,err
 }
 func (t *lib_RPCClient)GlobalFileExists_Remote(fname string) (exists bool, err error){
@@ -60,6 +63,9 @@ func (t *lib_RPCClient)GlobalFileExists_Remote(fname string) (exists bool, err e
 	args := &shared.OneStringMsg{Msg:fname}
 	var replyData shared.ExistsMsg
 	err = t.client.Call("DFSService.GlobalFileExists",args,&replyData)
+	if err != nil {
+		return false,DisconnectedError(t.ServerAddr) //The connection was timed out
+	}
 	return replyData.Exists,nil
 }	
 // DFS:Represent One instance of Client.
@@ -69,7 +75,7 @@ type DFSObj struct{
 	localPath string
 	id int
 	connected bool
-	tcpConn *net.TCPConn
+	tcpConn net.Conn
 	rpcClient *lib_RPCClient
 }
 func (dfsObj *DFSObj) LocalFileExists(fname string) (exists bool,err error){
@@ -274,14 +280,14 @@ func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err
 	CheckNonFatalError(err)
 
 	//Connect to Server
-	tcpServer_Addr,err := net.ResolveTCPAddr("tcp",serverAddr)
-	if err !=nil {
-		CheckNonFatalError(err)
-		return nil,err
-	}
-	tcpLocal_Addr,err := net.ResolveTCPAddr("tcp",localIP)
+	//tcpServer_Addr,err := net.ResolveTCPAddr("tcp",serverAddr)
+	//if err !=nil {
+	//	CheckNonFatalError(err)
+	//	return nil,err
+	//}
+	//tcpLocal_Addr,err := net.ResolveTCPAddr("tcp",localIP)
 	CheckNonFatalError(err)
-	tcpConn, err := net.DialTCP("tcp",tcpLocal_Addr,tcpServer_Addr)
+	tcpConn, err := net.DialTimeout("tcp",serverAddr,time.Duration(2*time.Second))
 	CheckNonFatalError(err)
 	//in case it disconnects
 	if err != nil {
@@ -297,7 +303,7 @@ func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err
 	thisDFS.tcpConn = tcpConn
 	thisDFS.connected = true
 	//Build RPC Connection
-	rpcClient := &lib_RPCClient{client:rpc.NewClient(tcpConn)}
+	rpcClient := &lib_RPCClient{client:rpc.NewClient(tcpConn),ServerAddr:serverAddr}
 	thisDFS.rpcClient = rpcClient	
 	if !metaFileExist {
 		newMetaData,err := rpcClient.RegisterNewClient_Remote(localIP,localPath)
