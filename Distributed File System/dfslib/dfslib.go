@@ -55,6 +55,13 @@ func (t *lib_RPCClient) RegisterNewClient_Remote(localIP string,localPath string
 	err = t.client.Call("DFSService.RegisterNewClient",args,&replyMetaData)
 	return replyMetaData,err
 }
+func (t *lib_RPCClient)GlobalFileExists_Remote(fname string) (exists bool, err error){
+	//To-Do: Return Disconnected Error
+	args := &shared.OneStringMsg{Msg:fname}
+	var replyData shared.ExistsMsg
+	err = t.client.Call("DFSService.GlobalFileExists",args,&replyData)
+	return replyData.Exists,nil
+}	
 // DFS:Represent One instance of Client.
 type DFSObj struct{
 	localIP string
@@ -89,7 +96,11 @@ func IsAGoodFileName(fname string) bool {
 	return true
 }
 func (dfsObj *DFSObj) GlobalFileExists(fname string) (exists bool, err error){
-	return false,DisconnectedError("Not Implemented")
+	if !IsAGoodFileName(fname) {
+		return false,BadFilenameError(fname)	
+	}else {
+		return dfsObj.rpcClient.GlobalFileExists_Remote(fname)
+	}
 }
 func (dfsObj *DFSObj) Open(fname string,mode FileMode)(f DFSFile,err error){
 	return nil,nil

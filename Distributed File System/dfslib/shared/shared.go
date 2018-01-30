@@ -6,6 +6,10 @@ type OneStringMsg struct{
 	Msg string
 }
 
+type ExistsMsg struct {
+	Exists bool
+}
+
 type Args struct {
 	A,B int
 }
@@ -28,6 +32,7 @@ type RNCReply struct {
 }
 type DFSService interface {
 	RegisterNewClient(args *RNCArgs,reply *RNCReply) error
+	GlobalFileExists(args *OneStringMsg, reply *ExistsMsg) error 
 }
 //One implementation of Arith Interface
 type ArithObjT1 int

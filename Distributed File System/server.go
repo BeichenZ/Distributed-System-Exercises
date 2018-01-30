@@ -40,12 +40,28 @@ func (t *DFSServiceObj) RegisterNewClient(args *shared.RNCArgs,reply *shared.RNC
 	if availableIndex == -1 {
 		return errors.New("Application:Client Count is more than 16.")
 	}
+	//Populate Local Client Info
 	clientList[availableIndex].localIP = args.LocalIP
 	clientList[availableIndex].localPath = args.LocalPath
 	clientList[availableIndex].occupied = true
-	//Note use the (index+1) as the unique ID for each client
 	clientList[availableIndex].ID = availableIndex+1
+	clientList[availableIndex].fileMap = make(map[string]SingleDFSFileInfo)
+	//Pass Back Remote Client Info
 	(*reply).ID = availableIndex+1
+	return nil
+}
+
+func (t *DFSServiceObj)GlobalFileExists(args *shared.OneStringMsg, reply *shared.ExistsMsg) error{
+	//To-Do: Disconnected Error
+	for _,element := range clientList {
+		if _,exists := element.fileMap[args.Msg];exists{
+			fmt.Println("Find File Name",args.Msg,"under ID:",element.ID)
+			(*reply).Exists = true
+			return nil
+		}
+	}
+	//if cannot find
+	(*reply).Exists = false
 	return nil
 }
 
@@ -55,6 +71,11 @@ type SingleClientInfo struct {
 	localIP string
 	localPath string
 	ID int
+	fileMap map[string]SingleDFSFileInfo
+}
+type SingleDFSFileInfo struct{
+	chunkVersionArray [256]int //version number 0 is the default version
+	
 }
 //Global Data Storage Shared by Multiple RPC calls and Main
 var clientList [16]SingleClientInfo
