@@ -45,7 +45,7 @@ func (t *DFSServiceObj) RegisterNewClient(args *shared.RNCArgs,reply *shared.RNC
 	clientList[availableIndex].localPath = args.LocalPath
 	clientList[availableIndex].occupied = true
 	clientList[availableIndex].ID = availableIndex+1
-	clientList[availableIndex].fileMap = make(map[string]SingleDFSFileInfo_ClientList)
+	clientList[availableIndex].fileMap = make(map[string]*SingleDFSFileInfo_ClientList)
 	//Pass Back Remote Client Info
 	(*reply).ID = availableIndex+1
 	return nil
@@ -73,7 +73,7 @@ func (t *DFSServiceObj)UpdateFileInfo(args *shared.GenericArgs, reply *shared.Ge
 	if isNewFile {
 		//Fill info for clientList
 		client := clientList[clientIndex]
-		client.fileMap[fname] = SingleDFSFileInfo_ClientList{} // by Default, version=0 is trivial version	
+		client.fileMap[fname] = &SingleDFSFileInfo_ClientList{} // by Default, version=0 is trivial version	
 		//Add new entry to globalFileMap
 		var tempArray [256]int
 		globalFileMap[fname] = SingleDFSFileInfo_FileList{fname:fname,chunkCount:0,chunkVersionMap:make(map[int]ChunkVersionToHolderMap),topVersion:tempArray}
@@ -102,6 +102,27 @@ func(t *server_RPCClient)UploadFollowingChunks_Remote(fname string,chunkIndexArr
 	}
 	return replyData.ChunkArray,nil
 }
+//Send Intermediate Data Chunk on the server to the client
+func (t *server_RPCClient) ReceiveChunksFromServerToClient_Remote(fname string,chunkIndexArray []int,chunkDataArray []shared.Chunk,chunkCount int,chunkNewVersionArray []int,clientID int)error{
+	args := shared.GenericArgs{IntArray:chunkIndexArray,ChunkArray:chunkDataArray,IntOne:chunkCount,IntArrayTwo:chunkNewVersionArray,StringOne:fname}
+	var replyData shared.GenericReply
+	c := make(chan error, 1)
+	go func() { c <- t.client.Call("ClientService.ReceiveChunksFromServerToClient", args, &replyData) } ()
+	select {
+  		case err := <-c:
+    			if err != nil { return err}
+  		case <-time.After(2*time.Second):
+			log.Println("ReceiveChunksFromServerToClient Timed out on File:",fname)
+    			return dfslib.DisconnectedError("TimeOut ReceiveChunksFromServerToClient RPC call")
+	}
+	//Update Server's Record on this client's file version info
+	clientIndex := clientID-1
+	for index,element := range chunkIndexArray {
+		//clientList[clientIndex].fileMap[fname].ChangeVersionNumber(chunkNewVersionArray[index],element)
+		clientList[clientIndex].fileMap[fname].chunkVersionArray[element] = chunkNewVersionArray[index]	
+	}
+	return nil
+}
 
 
 //Data Structure Type
@@ -110,11 +131,15 @@ type SingleClientInfo struct {
 	localIP string
 	localPath string
 	ID int
-	fileMap map[string]SingleDFSFileInfo_ClientList
+	fileMap map[string]*SingleDFSFileInfo_ClientList
 }
 //Single File Info for Client List to use
 type SingleDFSFileInfo_ClientList struct{
 	chunkVersionArray [256]int //version number 0 is the default version
+}
+func (t *SingleDFSFileInfo_ClientList)ChangeVersionNumber(versionNumber int,versionIndex int){
+	t.chunkVersionArray[versionIndex] = versionNumber
+
 }
 //For a single Chunk.key:version number,value:array of whether client at index contains such version 
 type ChunkVersionToHolderMap map[int][16]bool

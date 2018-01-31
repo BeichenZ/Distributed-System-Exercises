@@ -16,6 +16,8 @@ type GenericArgs struct {
 	BoolOne bool
 	IntOne int
 	IntArray []int
+	IntArrayTwo []int
+	ChunkArray []Chunk
 }
 type GenericReply struct {
 	BoolOne bool
@@ -51,6 +53,7 @@ type DFSService interface {
 }
 type ClientService interface{
 	UploadFollowingChunks(args *GenericArgs,reply *GenericReply) error
+	ReceiveChunksFromServerToClient(args *GenericArgs,reply *GenericReply)error 
 }
 //One implementation of Arith Interface
 type ArithObjT1 int

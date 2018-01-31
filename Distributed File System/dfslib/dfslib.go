@@ -51,7 +51,7 @@ type DFSFileObj struct {
 	ChunkCount int
 	ChunkVersionArray [256]int
 	FName string //Does not include post fix
-	ChunkArray [32]Chunk
+	ChunkArray [256]Chunk
 	FileHandler *os.File
 }
 func(dfsFileObj *DFSFileObj) Read(chunkNum uint8, chunk *Chunk) (err error){
@@ -329,8 +329,8 @@ type DFS interface {
 }
 
 //Server->Client RPC:ClientService Implementation
-type ClientService int
-func (t *ClientService)UpLoadFollowingChunks(args *shared.GenericArgs,reply *shared.GenericReply)error{	
+type ClientServiceObj int
+func (t *ClientServiceObj)UpLoadFollowingChunks(args *shared.GenericArgs,reply *shared.GenericReply)error{	
 	fname := args.StringOne
 	chunkIndexArray := args.IntArray
 	chunkUploadCount := len(chunkIndexArray)
@@ -352,6 +352,39 @@ func (t *ClientService)UpLoadFollowingChunks(args *shared.GenericArgs,reply *sha
 	reply.ChunkArray = replyChunkData	 
 	return nil	
 }
+//Server Pass newest chunk data to the client.
+func (t *ClientServiceObj)ReceiveChunksFromServerToClient(args *shared.GenericArgs,reply *shared.GenericReply)error{
+	//Read input data
+	chunkIndexArray := args.IntArray
+	chunkDataArray := args.ChunkArray
+	//chunkCount := args.IntOne
+	chunkNewVersionArray := args.IntArrayTwo
+	fname := args.StringOne
+	
+	//Load Local File into Memory
+	destAddr := filepath.Join(thisDFS.localPath,fname+".dfs")	
+	raw,err := ioutil.ReadFile(destAddr)
+	CheckFatalError(err)
+	var  thisDFSFile DFSFileObj
+	json.Unmarshal(raw,&thisDFSFile)
+	//Write Newest Chunk to memory and then local file 
+	//chunkIndexArray controls the sequential information for the new chunk to be written
+	for index,element := range chunkIndexArray {
+		//Update Data and Version Number Respectively
+		thisDFSFile.ChunkArray[element] = Chunk(chunkDataArray[index])
+		thisDFSFile.ChunkVersionArray[element]=chunkNewVersionArray[index]
+	}
+	encodedObj,err := json.Marshal(thisDFSFile)
+	CheckFatalError(err)
+	err = ioutil.WriteFile(destAddr,encodedObj,0644)//writefile will overwrite!
+	CheckFatalError(err)
+	f,err := os.Open(destAddr)
+	f.Sync()
+	f.Close()
+		
+	//Update The Server side's info will be handled by the server's ReceiveChunksFromServerToClient_Remote(), if current function succeed
+	return nil	
+}
 
 
 // The constructor for a new DFS object instance. Takes the server's
@@ -370,9 +403,10 @@ func (t *ClientService)UpLoadFollowingChunks(args *shared.GenericArgs,reply *sha
 // Can return the following errors:
 // - LocalPathError
 // - Networking errors related to localIP or serverAddr
+var thisDFS DFSObj //Global DFS instance
 func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err error) {
 	// Initialize
-	thisDFS := DFSObj {localIP:localIP,serverAddr:serverAddr,localPath:localPath}
+	thisDFS = DFSObj {localIP:localIP,serverAddr:serverAddr,localPath:localPath}
 	
 	//Check Local Path and Write Permission
 	if isvalid:= IsValidLocalPath(localPath);!isvalid{
@@ -390,10 +424,11 @@ func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err
 	}
 
 	//Listen Server->Client RPC Connection
-	var clientServiceObj ClientService
 	StoCConn,err := net.Listen("tcp",localIP+":0")//Listen to default port
-	rpc.RegisterName("ClientService",clientServiceObj)
-	go rpc.Accept(StoCConn)
+	ClientService_Instance := new (ClientServiceObj)
+	clientService_rpcServer := rpc.NewServer()
+	clientService_rpcServer.RegisterName("ClientService",ClientService_Instance)
+	go clientService_rpcServer.Accept(StoCConn)
 
 	//Dial Client->Server RPC Connection
 	tcpConn, err := net.DialTimeout("tcp",serverAddr,time.Duration(2*time.Second))
@@ -469,7 +504,7 @@ func Write_DFSMetaData(dfsFileAddr string, dfsMetaData DFSMetaData){
 
 func CheckNonFatalError (err error) {
 	if err != nil {
-		fmt.Println("NonFatal Error/Warning(Expectede) Ocurred:", err)
+		fmt.Println("Note(Expected) Ocurred:", err)
 	}
 }
 func CheckFatalError (err error){
