@@ -25,7 +25,7 @@ import (
  
 
 // A Chunk is the unit of reading/writing in DFS.
-type Chunk [32]byte
+type Chunk shared.Chunk
 
 // Represents a type of file access.
 type FileMode int
@@ -163,7 +163,13 @@ func (dfsObj *DFSObj) Open(fname string,mode FileMode)(f DFSFile,err error){
 				if err != nil {return nil,err}
 				localFile.FName = fname
 				return &localFile,nil
+			}else {
+				//File Exists either globally or locally
+				//err := dfsObj.rpcClient.ClientRequestFile_Remote(fname)
+				//if err != nil{return nil,err}
+				
 			}
+		
 		case WRITE:
 		case DREAD:
 		default:
@@ -322,6 +328,31 @@ type DFS interface {
 	UMountDFS() (err error)
 }
 
+//Server->Client RPC:ClientService Implementation
+type ClientService int
+func (t *ClientService)UpLoadFollowingChunks(args *shared.GenericArgs,reply *shared.GenericReply)error{	
+	fname := args.StringOne
+	chunkIndexArray := args.IntArray
+	chunkUploadCount := len(chunkIndexArray)
+	localPath := args.StringTwo
+
+	//Read file from local directory
+	destAddr := filepath.Join(localPath,fname+".dfs")	
+	raw,err := ioutil.ReadFile(destAddr)
+	CheckFatalError(err)
+	var  thisDFSFile DFSFileObj
+	json.Unmarshal(raw,&thisDFSFile)
+	var underlyingData [256]shared.Chunk
+	replyChunkData := underlyingData[:chunkUploadCount]
+	for index,element := range chunkIndexArray {
+		//Assume assignment is deep copy
+		//Element:chunk number to be extracted.Index:for indexing reply message purpose
+		replyChunkData[index] = shared.Chunk(thisDFSFile.ChunkArray[element])
+	}
+	reply.ChunkArray = replyChunkData	 
+	return nil	
+}
+
 
 // The constructor for a new DFS object instance. Takes the server's
 // IP:port address string as parameter, the localIP to use to
@@ -352,14 +383,19 @@ func MountDFS(serverAddr string, localIP string, localPath string) (dfs DFS, err
 	metaFileExist,dfsMetaFile,err := Read_DFSMetaData(dfsMetaFile_Addr)
 	CheckNonFatalError(err)
 
-	//Connect to Server
-	//tcpServer_Addr,err := net.ResolveTCPAddr("tcp",serverAddr)
-	//if err !=nil {
-	//	CheckNonFatalError(err)
-	//	return nil,err
-	//}
-	//tcpLocal_Addr,err := net.ResolveTCPAddr("tcp",localIP)
-	CheckNonFatalError(err)
+	_,err = net.ResolveTCPAddr("tcp",serverAddr)
+	if err !=nil {
+		CheckNonFatalError(err)
+		return nil,err
+	}
+
+	//Listen Server->Client RPC Connection
+	var clientServiceObj ClientService
+	StoCConn,err := net.Listen("tcp",localIP+":0")//Listen to default port
+	rpc.RegisterName("ClientService",clientServiceObj)
+	go rpc.Accept(StoCConn)
+
+	//Dial Client->Server RPC Connection
 	tcpConn, err := net.DialTimeout("tcp",serverAddr,time.Duration(2*time.Second))
 	CheckNonFatalError(err)
 	//in case it disconnects

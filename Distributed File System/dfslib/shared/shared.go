@@ -2,6 +2,7 @@ package shared
 //Store Shared Data Structure,interface between client and server
 import "errors"
 
+type Chunk [32]byte
 type OneStringMsg struct{
 	Msg string
 }
@@ -11,11 +12,17 @@ type ExistsMsg struct {
 }
 type GenericArgs struct {
 	StringOne string
+	StringTwo string
 	BoolOne bool
 	IntOne int
+	IntArray []int
 }
 type GenericReply struct {
 	BoolOne bool
+	ChunkArray []Chunk
+}
+type ChunckUploadReply struct {
+		
 }
 type Args struct {
 	A,B int
@@ -40,6 +47,10 @@ type RNCReply struct {
 type DFSService interface {
 	RegisterNewClient(args *RNCArgs,reply *RNCReply) error
 	GlobalFileExists(args *OneStringMsg, reply *ExistsMsg) error 
+	UpdateFileInfo(args *GenericArgs, reply *GenericReply) error
+}
+type ClientService interface{
+	UploadFollowingChunks(args *GenericArgs,reply *GenericReply) error
 }
 //One implementation of Arith Interface
 type ArithObjT1 int

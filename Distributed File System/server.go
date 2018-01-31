@@ -12,11 +12,11 @@ import (
 	"net"
 	"os"
 	"net/rpc"
-	//"./dfslib"
+	"./dfslib"
 	"./dfslib/shared"
 	"errors"
 	"strings"
-	//"time"
+	"time"
 )
 //Implement shared.DFSService Interface
 type DFSServiceObj int
@@ -84,6 +84,25 @@ func (t *DFSServiceObj)UpdateFileInfo(args *shared.GenericArgs, reply *shared.Ge
 		return nil
 	}
 }
+//RPC:Server As the Client (server->client RPC)
+type server_RPCClient struct {
+	client *rpc.Client
+}
+func(t *server_RPCClient)UploadFollowingChunks_Remote(fname string,chunkIndexArray []int,localPath string)(replyChunkArray []shared.Chunk,err error){
+	args := shared.GenericArgs{StringOne:fname,IntArray:chunkIndexArray,StringTwo:localPath}
+	var replyData shared.GenericReply
+	c := make(chan error, 1)
+	go func() { c <- t.client.Call("ClientService.UpLoadFollowingChunks", args, &replyData) } ()
+	select {
+  		case err := <-c:
+    			if err != nil { return nil,err}
+  		case <-time.After(2*time.Second):
+			log.Println("UpLoadFollowingChunks Timed out on File:",fname)
+    			return nil,dfslib.DisconnectedError("TimeOut UpLoadFollowingChunks RPC call")
+	}
+	return replyData.ChunkArray,nil
+}
+
 
 //Data Structure Type
 type SingleClientInfo struct {
